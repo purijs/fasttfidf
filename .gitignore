@@ -1,0 +1,95 @@
+# Byte-compiled / optimized / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+*.egg
+*.whl
+
+# Virtual environments
+.env/
+.venv/
+venv/
+env/
+ENV/
+.venv/
+venv.bak/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+# Pyre / MyPy / linters
+.mypy_cache/
+.pyre/
+.ruff_cache/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Logs and runtime files
+*.log
+*.pid
+*.seed
+*.retry
+
+# Environment / secrets
+.env
+*.env
+secrets.yml
+credentials.json
+
+# Data, models, outputs (adjust per project)
+data/
+datasets/
+models/
+checkpoints/
+outputs/
+results/
+tmp/
+temp/
+
+# Build artifacts from C/C++ or compiled helpers
+*.o
+*.obj
+*.dll
+*.exe
+*.pyc
+
+# Misc
+coverage/
+dist-check/
+tags
