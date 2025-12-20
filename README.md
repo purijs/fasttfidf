@@ -2,8 +2,6 @@
 
 High-performance TF-IDF vectorization for large-scale text datasets that exceed available memory.
 
-fasttfidf is a Python library that provides TF-IDF vectorization with automatic memory management and SIMD acceleration. It processes datasets larger than RAM using memory-mapped files and streaming architecture, making it practical to work with multi-gigabyte text corpora on commodity hardware.
-
 ## Key Features
 
 - **Memory-efficient processing**: Handles datasets larger than available RAM through streaming and automatic memory management
