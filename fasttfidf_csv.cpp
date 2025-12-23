@@ -1039,7 +1039,7 @@ public:
     }
 };
 
-PYBIND11_MODULE(fasttfidf, m) {
+PYBIND11_MODULE(fasttfidf_csv, m) {
     m.doc() = "High-performance TF-IDF with SIMD (AVX2/NEON) and Zero-Copy Streaming";
 
     py::class_<TfidfVectorizer>(m, "TfidfVectorizer")

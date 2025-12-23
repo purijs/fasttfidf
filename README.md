@@ -12,7 +12,7 @@ fasttfidf is a Python library that provides TF-IDF vectorization with automatic 
 
 ## Limitations
 
-- **CSV format only**: Requires CSV files with a `text` column header
+- **CSV and Parquet only**: Requires CSV or Parquet files with a `text` column header
 - **No preprocessing**: Does not perform stopword removal, stemming, or lemmatization - input text must be preprocessed
 - **Batch processing required**: Transform returns raw components (data, indices, indptr) that require manual conversion to sparse matrices
 - **Manual IDF application**: IDF weighting and normalization must be applied manually during transformation (example given)
@@ -20,7 +20,42 @@ fasttfidf is a Python library that provides TF-IDF vectorization with automatic 
 
 ## Installation
 
-### From source
+### Using Conda (Recommended)
+
+```bash
+conda create -n fasttfidf python=3.9 -y
+conda activate fasttfidf
+conda install -c conda-forge arrow-cpp pyarrow psutil pybind11 pytest -y
+git clone https://github.com/purijs/fasttfidf
+cd fasttfidf
+python -m pip install --no-build-isolation -e . 
+```
+
+### Manual Installation
+
+Install Apache Arrow C++ library:
+
+**macOS (Homebrew):**
+```bash
+brew install apache-arrow
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y libarrow-dev libparquet-dev
+```
+
+**Linux (Fedora/RHEL):**
+```bash
+sudo dnf install -y arrow-devel parquet-devel
+```
+
+**Windows:**
+```bash
+conda install -c conda-forge arrow-cpp pyarrow
+```
+
+Then install from source:
 
 ```bash
 git clone https://github.com/purijs/fasttfidf
@@ -33,6 +68,7 @@ Requirements:
 - NumPy >= 1.19.0
 - SciPy >= 1.5.0
 - C++17 compatible compiler
+- Apache Arrow C++ library
 
 ## Quick Start
 
@@ -175,7 +211,9 @@ idf_value = vec.get_word_idf('computer')
 doc_freq = vec.get_word_df('computer')
 ```
 
-## CSV Format Requirements
+## Input Format Requirements
+
+### CSV Format
 
 fasttfidf expects CSV files with a header row and a `text` column:
 
@@ -186,7 +224,23 @@ This document is the second document.
 And this is the third one.
 ```
 
-**Important**: The library does not perform any text preprocessing. Your CSV must contain pre-processed text with stopwords removed, text lowercased, and any other desired preprocessing already applied.
+### Parquet Format
+
+fasttfidf also supports Apache Parquet files with a `text` column. Use the `fasttfidf_parquet` module for parquet files:
+
+```python
+import fasttfidf_parquet
+
+vec = fasttfidf_parquet.TfidfVectorizer()
+vec.fit('/path/to/parquet/files/', num_processes=0) # or file.parquet
+vec.save('model.tfidf')
+
+# Transform works the same way
+vec.open_stream('train.parquet')
+batch = vec.get_batch(128 * 1024 * 1024)
+```
+
+**Important**: The library does not perform any text preprocessing. Your files must contain pre-processed text with stopwords removed, text lowercased, and any other desired preprocessing already applied.
 
 ## API Reference
 

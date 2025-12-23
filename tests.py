@@ -5,23 +5,18 @@ Compatible: macOS, Linux, Windows (where applicable)
 """
 
 import pytest
-import tempfile
-import os
 import sys
 import psutil
 import time
 import random
 import string
 import gc
-import numpy as np
-from pathlib import Path
+import fasttfidf_csv
+import fasttfidf_parquet
+import pyarrow as pa
+import pyarrow.parquet as pq
 
-# Import the library
-try:
-    import fasttfidf
-except ImportError:
-    pytest.skip("fasttfidf not built", allow_module_level=True)
-
+PARQUET_AVAILABLE = True
 
 class TestBasicFunctionality:
     """Test basic functionality works"""
@@ -31,7 +26,7 @@ class TestBasicFunctionality:
         csv_file = tmp_path / "test.csv"
         csv_file.write_text("text\nhello world\nfoo bar\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         
         assert vec.get_vocab_size() > 0
@@ -42,13 +37,13 @@ class TestBasicFunctionality:
         csv_file = tmp_path / "test.csv"
         csv_file.write_text("text\nhello world\nfoo bar\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         
         model_file = tmp_path / "model.txt"
         vec.save(str(model_file))
         
-        vec2 = fasttfidf.TfidfVectorizer()
+        vec2 = fasttfidf_csv.TfidfVectorizer()
         vec2.load(str(model_file))
         
         assert vec2.get_vocab_size() == vec.get_vocab_size()
@@ -63,7 +58,7 @@ class TestMalformedCSV:
         csv_file = tmp_path / "empty.csv"
         csv_file.write_text("")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         with pytest.raises(RuntimeError):
             vec.fit(str(csv_file), verbose=False)
     
@@ -72,7 +67,7 @@ class TestMalformedCSV:
         csv_file = tmp_path / "header_only.csv"
         csv_file.write_text("text\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_total_docs() == 0
     
@@ -81,7 +76,7 @@ class TestMalformedCSV:
         csv_file = tmp_path / "no_newline.csv"
         csv_file.write_text("text\nhello world")  # No \n at end
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_total_docs() >= 1
     
@@ -91,7 +86,7 @@ class TestMalformedCSV:
         long_text = " ".join(["word"] * 100000)  # 600KB line
         csv_file.write_text(f"text\n{long_text}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_vocab_size() >= 1
     
@@ -100,7 +95,7 @@ class TestMalformedCSV:
         csv_file = tmp_path / "empty_lines.csv"
         csv_file.write_text("text\n\n\nhello world\n\n\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_total_docs() >= 1
     
@@ -109,7 +104,7 @@ class TestMalformedCSV:
         csv_file = tmp_path / "special.csv"
         csv_file.write_text("text\n!@#$%^&*()\n你好世界\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         # Should not crash, vocab may be empty
         assert vec.get_vocab_size() >= 0
@@ -122,7 +117,7 @@ class TestMalformedCSV:
             f.write(b"\x00\x01\x02\xff\xfe\xfd\n")  # Binary data
             f.write(b"hello world\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         # Should handle gracefully, not crash
         try:
             vec.fit(str(csv_file), verbose=False)
@@ -137,7 +132,7 @@ class TestMalformedCSV:
             f.write(b"text\n")
             f.write(b"hello\x00world\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         # Should not crash
 
@@ -155,7 +150,7 @@ class TestMemoryConstraints:
             for i in range(100000):
                 f.write(f"word{i%1000} word{i%500} word{i%250}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         # Force single worker to reduce memory
         vec.fit(str(csv_file), num_processes=1, max_features=1000, verbose=True)
         
@@ -174,7 +169,7 @@ class TestMemoryConstraints:
         
         # Run fit multiple times
         for _ in range(5):
-            vec = fasttfidf.TfidfVectorizer()
+            vec = fasttfidf_csv.TfidfVectorizer()
             vec.fit(str(csv_file), verbose=False)
             del vec
             gc.collect()
@@ -193,7 +188,7 @@ class TestMemoryConstraints:
             for i in range(10000):
                 f.write(f"word{i%100} test{i%50}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         
         process = psutil.Process()
@@ -223,7 +218,7 @@ class TestMemoryConstraints:
                 # Generate unique words to maximize vocab
                 f.write(f"uniqueword{i} anotherword{i}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), max_features=50000, verbose=False)
         
         assert vec.get_vocab_size() <= 50000
@@ -234,13 +229,13 @@ class TestIOErrors:
     
     def test_nonexistent_file(self):
         """Test handling of non-existent file"""
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         with pytest.raises(RuntimeError, match="Cannot open file"):
             vec.fit("/nonexistent/path/file.csv", verbose=False)
     
     def test_directory_instead_of_file(self, tmp_path):
         """Test handling of directory path"""
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         with pytest.raises(RuntimeError):
             vec.fit(str(tmp_path), verbose=False)
     
@@ -253,7 +248,7 @@ class TestIOErrors:
         csv_file.write_text("text\nhello world\n")
         csv_file.chmod(0o000)  # Remove all permissions
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         try:
             with pytest.raises(RuntimeError):
                 vec.fit(str(csv_file), verbose=False)
@@ -268,7 +263,7 @@ class TestIOErrors:
             for i in range(1000):
                 f.write(f"word{i}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         vec.open_stream(str(csv_file))
         
@@ -300,7 +295,7 @@ class TestFuzzTesting:
                 ))
                 f.write(f"{random_text}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         # Should not crash
     
@@ -318,7 +313,7 @@ class TestFuzzTesting:
                 line = ','.join(['word' for _ in range(cols)])
                 f.write(f"{line}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         try:
             vec.fit(str(csv_file), verbose=False)
         except RuntimeError:
@@ -332,7 +327,7 @@ class TestFuzzTesting:
             for i in range(100):
                 f.write(f"word{i}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         
         # Test extreme min_df
         vec.fit(str(csv_file), min_df=1000000, verbose=False)
@@ -353,8 +348,8 @@ class TestConcurrency:
         csv_file = tmp_path / "test.csv"
         csv_file.write_text("text\nhello world\nfoo bar\n")
         
-        vec1 = fasttfidf.TfidfVectorizer()
-        vec2 = fasttfidf.TfidfVectorizer()
+        vec1 = fasttfidf_csv.TfidfVectorizer()
+        vec2 = fasttfidf_csv.TfidfVectorizer()
         
         vec1.fit(str(csv_file), verbose=False)
         vec2.fit(str(csv_file), verbose=False)
@@ -366,7 +361,7 @@ class TestConcurrency:
         csv_file = tmp_path / "test.csv"
         csv_file.write_text("text\nhello world\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         
         model_file = tmp_path / "model.txt"
@@ -385,7 +380,7 @@ class TestEdgeCases:
         csv_file = tmp_path / "single.csv"
         csv_file.write_text("text\nhello world\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_total_docs() == 1
     
@@ -397,7 +392,7 @@ class TestEdgeCases:
             for _ in range(100):
                 f.write("hello\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_vocab_size() >= 1
     
@@ -409,13 +404,13 @@ class TestEdgeCases:
             for _ in range(100):
                 f.write("a b c d e f g\n")  # All filtered (< 2 chars)
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_vocab_size() == 0
     
     def test_transform_before_fit(self):
         """Test transform without fitting first"""
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         # Should raise exception for non-existent file
         with pytest.raises(RuntimeError):
             vec.open_stream("/tmp/fake_nonexistent_file.csv")
@@ -435,7 +430,7 @@ class TestPlatformSpecific:
             for i in range(1000000):
                 f.write(f"word{i%10000}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         assert vec.get_total_docs() == 1000000
     
@@ -450,7 +445,7 @@ class TestPlatformSpecific:
         symlink = tmp_path / "link.csv"
         symlink.symlink_to(csv_file)
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(symlink), verbose=False)
         assert vec.get_vocab_size() > 0
 
@@ -466,7 +461,7 @@ class TestPerformanceRegression:
             for i in range(10000):
                 f.write(f"word{i%1000} test{i%500}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         start = time.time()
         vec.fit(str(csv_file), verbose=False)
         duration = time.time() - start
@@ -482,7 +477,7 @@ class TestPerformanceRegression:
             for i in range(10000):
                 f.write(f"word{i%1000} test{i%500}\n")
         
-        vec = fasttfidf.TfidfVectorizer()
+        vec = fasttfidf_csv.TfidfVectorizer()
         vec.fit(str(csv_file), verbose=False)
         
         start = time.time()
@@ -495,6 +490,80 @@ class TestPerformanceRegression:
         
         # Should complete in under 2 seconds
         assert duration < 2.0, f"Transform took {duration:.2f}s (too slow)"
+
+
+class TestParquetSupport:
+    """Test Parquet file support"""
+
+    @pytest.mark.skipif(not PARQUET_AVAILABLE, reason="Parquet support not available")
+    def test_parquet_basic_fit(self, tmp_path):
+        """Test basic fit operation with parquet file"""
+        parquet_file = tmp_path / "test.parquet"
+
+        table = pa.table({'text': ['hello world', 'foo bar']})
+        pq.write_table(table, parquet_file)
+
+        vec = fasttfidf_parquet.TfidfVectorizer()
+        vec.fit(str(parquet_file), verbose=False)
+
+        assert vec.get_vocab_size() > 0
+        assert vec.get_total_docs() == 2
+
+    @pytest.mark.skipif(not PARQUET_AVAILABLE, reason="Parquet support not available")
+    def test_parquet_save_load(self, tmp_path):
+        """Test save/load with parquet"""
+        parquet_file = tmp_path / "test.parquet"
+
+        table = pa.table({'text': ['hello world', 'foo bar']})
+        pq.write_table(table, parquet_file)
+
+        vec = fasttfidf_parquet.TfidfVectorizer()
+        vec.fit(str(parquet_file), verbose=False)
+
+        model_file = tmp_path / "model.txt"
+        vec.save(str(model_file))
+
+        vec2 = fasttfidf_parquet.TfidfVectorizer()
+        vec2.load(str(model_file))
+
+        assert vec2.get_vocab_size() == vec.get_vocab_size()
+        assert vec2.get_total_docs() == vec.get_total_docs()
+
+    @pytest.mark.skipif(not PARQUET_AVAILABLE, reason="Parquet support not available")
+    def test_parquet_streaming(self, tmp_path):
+        """Test streaming transformation with parquet"""
+        parquet_file = tmp_path / "test.parquet"
+
+        texts = [f"word{i%100} test{i%50}" for i in range(1000)]
+        table = pa.table({'text': texts})
+        pq.write_table(table, parquet_file)
+
+        vec = fasttfidf_parquet.TfidfVectorizer()
+        vec.fit(str(parquet_file), verbose=False)
+
+        vec.open_stream(str(parquet_file))
+        batch = vec.get_batch(1024 * 1024)
+
+        assert batch is not None
+        data, indices, indptr = batch
+        assert len(data) > 0
+        assert len(indices) > 0
+        assert len(indptr) > 0
+
+    @pytest.mark.skipif(not PARQUET_AVAILABLE, reason="Parquet support not available")
+    def test_parquet_large_file(self, tmp_path):
+        """Test parquet with larger dataset"""
+        parquet_file = tmp_path / "large.parquet"
+
+        texts = [f"word{i%1000} test{i%500}" for i in range(10000)]
+        table = pa.table({'text': texts})
+        pq.write_table(table, parquet_file)
+
+        vec = fasttfidf_parquet.TfidfVectorizer()
+        vec.fit(str(parquet_file), max_features=500, verbose=False)
+
+        assert vec.get_vocab_size() <= 500
+        assert vec.get_total_docs() == 10000
 
 
 # Fixtures
