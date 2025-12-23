@@ -60,6 +60,7 @@ Then install from source:
 ```bash
 git clone https://github.com/purijs/fasttfidf
 cd fasttfidf
+pip install pybind11 pytest setuptools psutil pyarrow
 pip install -e .
 ```
 
