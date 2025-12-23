@@ -42,12 +42,12 @@ brew install apache-arrow
 
 **Linux (Ubuntu/Debian):**
 ```bash
-sudo apt-get install -y libarrow-dev libparquet-dev
-```
-
-**Linux (Fedora/RHEL):**
-```bash
-sudo dnf install -y arrow-devel parquet-devel
+sudo apt update
+sudo apt install -y -V ca-certificates lsb-release wget
+wget https://apache.jfrog.io/artifactory/arrow/ubuntu/apache-arrow-apt-source-latest-$(lsb_release -cs).deb
+sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release -cs).deb
+sudo apt update
+sudo apt install -y libarrow-dev libparquet-dev pkg-config
 ```
 
 **Windows:**
@@ -69,7 +69,7 @@ Requirements:
 - NumPy >= 1.19.0
 - SciPy >= 1.5.0
 - C++17 compatible compiler
-- Apache Arrow C++ library
+- Apache Arrow C++ library (version: 22)
 
 ## Quick Start
 
