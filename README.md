@@ -76,10 +76,10 @@ Requirements:
 ### Step 1: Fit and Save Model
 
 ```python
-import fasttfidf
+import fasttfidf_csv
 
 # Fit the vectorizer on your training data
-vec = fasttfidf.TfidfVectorizer()
+vec = fasttfidf_csv.TfidfVectorizer()
 vec.fit('train.csv', num_processes=0) # use all cores
 
 # Save model for later use
@@ -95,14 +95,14 @@ fasttfidf provides two transformation workflows depending on your use case.
 For datasets larger than RAM, train models incrementally:
 
 ```python
-import fasttfidf
+import fasttfidf_csv
 from scipy.sparse import csr_matrix
 from sklearn.linear_model import SGDClassifier
 from sklearn.preprocessing import normalize
 import numpy as np
 
 # Load model
-vec = fasttfidf.TfidfVectorizer()
+vec = fasttfidf_csv.TfidfVectorizer()
 vec.load('model.tfidf')
 
 # Get IDF weights once
@@ -149,7 +149,7 @@ from sklearn.preprocessing import normalize
 import numpy as np
 
 # Load model
-vec = fasttfidf.TfidfVectorizer()
+vec = fasttfidf_csv.TfidfVectorizer()
 vec.load('model.tfidf')
 
 # Get IDF weights
@@ -237,7 +237,7 @@ vec.fit('/path/to/parquet/files/', num_processes=0) # or file.parquet
 vec.save('model.tfidf')
 
 # Transform works the same way
-vec.open_stream('train.parquet')
+vec.open_stream('test.parquet')
 batch = vec.get_batch(128 * 1024 * 1024)
 ```
 
