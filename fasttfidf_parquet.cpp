@@ -104,16 +104,17 @@ int get_row_group_count(const std::string& filename) {
     
     auto mmap_file = mmap_result.ValueOrDie();
     
-    auto reader_result = parquet::arrow::OpenFile(
+    std::unique_ptr<parquet::arrow::FileReader> reader;
+    auto status = parquet::arrow::OpenFile(
         mmap_file,
-        arrow::default_memory_pool()
+        arrow::default_memory_pool(),
+        &reader
     );
     
-    if (!reader_result.ok()) {
+    if (!status.ok()) {
         return 0;
     }
-    
-    auto reader = std::move(reader_result.ValueOrDie());
+
     return reader->num_row_groups();
 }
 
@@ -275,14 +276,14 @@ public:
             
             auto mmap_file = mmap_result.ValueOrDie();
             
-            auto reader_result = parquet::arrow::OpenFile(
+            std::unique_ptr<parquet::arrow::FileReader> reader;
+            auto status = parquet::arrow::OpenFile(
                 mmap_file,
-                arrow::default_memory_pool()
+                arrow::default_memory_pool(),
+                &reader
             );
             
-            if (!reader_result.ok()) continue;
-            
-            auto reader = std::move(reader_result.ValueOrDie());
+            if (!status.ok()) continue;
             auto metadata = reader->parquet_reader()->metadata();
             total_docs_ += metadata->num_rows();
         }
@@ -351,16 +352,16 @@ private:
                 
                 auto mmap_file = mmap_result.ValueOrDie();
                 
-                auto reader_result = parquet::arrow::OpenFile(
+                std::unique_ptr<parquet::arrow::FileReader> reader;
+                auto status = parquet::arrow::OpenFile(
                     mmap_file,
-                    arrow::default_memory_pool()
+                    arrow::default_memory_pool(),
+                    &reader
                 );
                 
-                if (!reader_result.ok()) {
+                if (!status.ok()) {
                     continue;
                 }
-                
-                auto reader = std::move(reader_result.ValueOrDie());
                 
                 // Process assigned row groups for this file
                 for (int rg = unit.start_row_group; rg < unit.end_row_group; rg++) {
@@ -521,17 +522,16 @@ public:
         
         mmap_file_ = mmap_result.ValueOrDie();
         
-        auto reader_result = parquet::arrow::OpenFile(
+        auto status = parquet::arrow::OpenFile(
             mmap_file_,
-            arrow::default_memory_pool()
+            arrow::default_memory_pool(),
+            &reader_
         );
         
-        if (!reader_result.ok()) {
+        if (!status.ok()) {
             throw std::runtime_error("Cannot create reader: " + 
-                                   reader_result.status().ToString());
+                                   status.ToString());
         }
-        
-        reader_ = std::move(reader_result.ValueOrDie());
         
         current_row_group_ = 0;
         current_row_in_group_ = 0;
