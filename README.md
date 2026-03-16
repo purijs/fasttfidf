@@ -23,12 +23,14 @@ fasttfidf is a Python library that provides TF-IDF vectorization with automatic 
 ### Using Conda (Recommended)
 
 ```bash
-conda create -n fasttfidf python=3.9 -y
+conda create -n fasttfidf python=3.11 -y
 conda activate fasttfidf
 conda install -c conda-forge arrow-cpp pyarrow psutil pybind11 pytest -y
 git clone https://github.com/purijs/fasttfidf
 cd fasttfidf
-python -m pip install --no-build-isolation -e . 
+/Users/jaskaransinghpuri/anaconda3/envs/fasttfidf/bin/pip install --no-build-isolation -e .
+
+Once installed, make sure your Python Kernel points to: /Users/$USER/anaconda3/envs/fasttfidf/bin/python3.11
 ```
 
 ### Manual Installation
@@ -37,7 +39,7 @@ Install Apache Arrow C++ library:
 
 **macOS (Homebrew):**
 ```bash
-brew install apache-arrow
+brew install apache-arrow@22
 ```
 
 **Linux (Ubuntu/Debian):**
