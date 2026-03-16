@@ -71,7 +71,7 @@ description = "High-performance TF-IDF for large-scale text datasets"
 authors = ["Jaskaran Singh Puri"]
 license = "MIT"
 readme = "README.md"
-packages = []  # C++ extension, no pure Python packages
+packages = []
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
@@ -105,7 +105,37 @@ Requirements:
 - C++17 compatible compiler
 - Apache Arrow C++ library (version: 22)
 
-## Quick Start
+
+## Input Format Requirements
+
+**Important**: The library does not perform any text preprocessing. Your files must contain pre-processed text with stopwords removed, text lowercased, and any other desired preprocessing already applied.
+
+### CSV Format
+
+fasttfidf expects CSV files with a header row and a `text` column:
+
+```csv
+text
+This is the first document.
+This document is the second document.
+And this is the third one.
+```
+
+### Parquet Format
+
+fasttfidf also supports Apache Parquet files with a `text` column. Use the `fasttfidf_parquet` module for parquet files:
+
+```python
+import fasttfidf_parquet
+
+vec = fasttfidf_parquet.TfidfVectorizer()
+vec.fit('/path/to/parquet/files/', num_processes=0) # or file.parquet
+vec.save('model.tfidf')
+
+# Transform works the same way
+vec.open_stream('test.parquet')
+batch = vec.get_batch(128 * 1024 * 1024)
+```
 
 ### Step 1: Fit and Save Model
 
@@ -245,37 +275,6 @@ results = vec.search_words('machine', max_results=50)
 idf_value = vec.get_word_idf('computer')
 doc_freq = vec.get_word_df('computer')
 ```
-
-## Input Format Requirements
-
-### CSV Format
-
-fasttfidf expects CSV files with a header row and a `text` column:
-
-```csv
-text
-This is the first document.
-This document is the second document.
-And this is the third one.
-```
-
-### Parquet Format
-
-fasttfidf also supports Apache Parquet files with a `text` column. Use the `fasttfidf_parquet` module for parquet files:
-
-```python
-import fasttfidf_parquet
-
-vec = fasttfidf_parquet.TfidfVectorizer()
-vec.fit('/path/to/parquet/files/', num_processes=0) # or file.parquet
-vec.save('model.tfidf')
-
-# Transform works the same way
-vec.open_stream('test.parquet')
-batch = vec.get_batch(128 * 1024 * 1024)
-```
-
-**Important**: The library does not perform any text preprocessing. Your files must contain pre-processed text with stopwords removed, text lowercased, and any other desired preprocessing already applied.
 
 ## API Reference
 
