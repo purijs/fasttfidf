@@ -20,22 +20,9 @@ fasttfidf is a Python library that provides TF-IDF vectorization with automatic 
 
 ## Installation
 
-### Using Conda (Recommended)
+### Step 1: Library Installation
 
-```bash
-conda create -n fasttfidf python=3.11 -y
-conda activate fasttfidf
-conda install -c conda-forge arrow-cpp pyarrow psutil pybind11 pytest -y
-git clone https://github.com/purijs/fasttfidf
-cd fasttfidf
-/Users/jaskaransinghpuri/anaconda3/envs/fasttfidf/bin/pip install --no-build-isolation -e .
-
-Once installed, make sure your Python Kernel points to: /Users/$USER/anaconda3/envs/fasttfidf/bin/python3.11
-```
-
-### Manual Installation
-
-Install Apache Arrow C++ library:
+Install Apache Arrow C++ library (Version 22):
 
 **macOS (Homebrew):**
 ```bash
@@ -52,18 +39,63 @@ sudo apt update
 sudo apt install -y libarrow-dev libparquet-dev pkg-config
 ```
 
-**Windows:**
-```bash
-conda install -c conda-forge arrow-cpp pyarrow
-```
-
-Then install from source:
+### Step 2: Python ENV Setup Using Conda (Recommended)
 
 ```bash
+conda create -n fasttfidf python=3.11 -y
+conda activate fasttfidf
+conda install -c conda-forge arrow-cpp pyarrow psutil pybind11 pytest -y
 git clone https://github.com/purijs/fasttfidf
 cd fasttfidf
-pip install pybind11 pytest setuptools psutil pyarrow
-pip install -e .
+/Users/jaskaransinghpuri/anaconda3/envs/fasttfidf/bin/pip install --no-build-isolation -e .
+
+Once installed, make sure your Python Kernel points to: /Users/$USER/anaconda3/envs/fasttfidf/bin/python3.11
+```
+
+**OR**
+
+### Step 2: Python ENV Setup Using Poetry
+
+Run these:
+```bash
+export ARROW_HOME=$(brew --prefix apache-arrow@22)
+export PKG_CONFIG_PATH="${ARROW_HOME}/lib/pkgconfig:$PKG_CONFIG_PATH"
+```
+
+pyproject.toml
+```
+[tool.poetry]
+name = "fasttfidf"
+version = "0.1.0"
+description = "High-performance TF-IDF for large-scale text datasets"
+authors = ["Jaskaran Singh Puri"]
+license = "MIT"
+readme = "README.md"
+packages = []  # C++ extension, no pure Python packages
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.13"
+numpy = ">=1.19.0"
+scipy = ">=1.5.0"
+pyarrow = ">=22.0.0,<23.0.0"
+psutil = ">=5.9.0"
+pybind11 = ">=2.10.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+
+[build-system]
+requires = [
+    "setuptools>=68",
+    "pybind11>=2.10.0"
+]
+build-backend = "setuptools.backends.legacy:build"
+```
+
+Then Run:
+```bash
+poetry install
+poetry run pip install --no-build-isolation -e .
 ```
 
 Requirements:
